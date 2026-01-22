@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Task Board</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        gray: {
+                            50: '#F9FAFB',
+                            100: '#F3F4F6',
+                            200: '#E5E7EB',
+                            300: '#D1D5DB',
+                            400: '#9CA3AF',
+                            500: '#6B7280',
+                            600: '#4B5563',
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+        }
+        
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 h-screen flex flex-col overflow-hidden selection:bg-gray-900 selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                TB
+            </div>
+            <h1 class="font-semibold text-lg tracking-tight">Task Board</h1>
+        </div>
+        <button onclick="openTaskModal()" class="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2">
+            <i class="fa-solid fa-plus text-xs"></i>
+            Nuova Task
+        </button>
+    </header>
+
+    <!-- Main Board -->
+    <main class="flex-1 overflow-x-auto overflow-y-hidden p-6">
+        <div class="h-full flex gap-6 min-w-[1000px]">
+            
+            <!-- Column: Todo -->
+            <div class="flex-1 flex flex-col h-full min-w-[300px]">
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-gray-300"></span>
+                        <h2 class="font-medium text-gray-600 text-sm uppercase tracking-wide">Da Fare</h2>
+                    </div>
+                    <span id="count-todo" class="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">0</span>
+                </div>
+                <div id="col-todo" 
+                     class="flex-1 bg-gray-100/50 rounded-xl border border-gray-200/50 p-3 overflow-y-auto no-scrollbar space-y-3 transition-colors hover:bg-gray-100"
+                     ondragover="allowDrop(event)" 
+                     ondrop="drop(event, 'todo')">
+                    <!-- Tasks will be injected here -->
+                </div>
+            </div>
+
+            <!-- Column: In Progress -->
+            <div class="flex-1 flex flex-col h-full min-w-[300px]">
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                        <h2 class="font-medium text-gray-600 text-sm uppercase tracking-wide">In Corso</h2>
+                    </div>
+                    <span id="count-in-progress" class="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">0</span>
+                </div>
+                <div id="col-in-progress" 
+                     class="flex-1 bg-gray-100/50 rounded-xl border border-gray-200/50 p-3 overflow-y-auto no-scrollbar space-y-3 transition-colors hover:bg-gray-100"
+                     ondragover="allowDrop(event)" 
+                     ondrop="drop(event, 'in-progress')">
+                </div>
+            </div>
+
+            <!-- Column: Done -->
+            <div class="flex-1 flex flex-col h-full min-w-[300px]">
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                        <h2 class="font-medium text-gray-600 text-sm uppercase tracking-wide">Completate</h2>
+                    </div>
+                    <span id="count-done" class="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">0</span>
+                </div>
+                <div id="col-done" 
+                     class="flex-1 bg-gray-100/50 rounded-xl border border-gray-200/50 p-3 overflow-y-auto no-scrollbar space-y-3 transition-colors hover:bg-gray-100"
+                     ondragover="allowDrop(event)" 
+                     ondrop="drop(event, 'done')">
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Create/Edit Modal -->
+    <div id="taskModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-gray-900/20 backdrop-blur-sm transition-opacity" onclick="closeTaskModal()"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transform transition-transform duration-300 translate-x-full flex flex-col" id="taskModalContent">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                <h3 class="font-semibold text-lg" id="modalTitle">Nuova Task</h3>
+                <button onclick="closeTaskModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <form id="taskForm" onsubmit="handleTaskSubmit(event)">
+                    <input type="hidden" id="taskId">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Titolo</label>
+                            <input type="text" id="taskTitle" required
+                                class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-all text-sm placeholder-gray-400"
+                                placeholder="Cosa devi fare?">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Descrizione</label>
+                            <textarea id="taskDescription" rows="3"
+                                class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-all text-sm placeholder-gray-400 resize-none"
+                                placeholder="Aggiungi dettagli..."></textarea>
+                        </div>
+
+                        <!-- Image Attachment -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Allegato</label>
+                            <div class="flex flex-col gap-3">
+                                <div id="imagePreviewContainer" class="hidden relative group w-full h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                    <img id="imagePreview" src="" alt="Preview" class="w-full h-full object-cover">
+                                    <button type="button" onclick="removeImage()" 
+                                        class="absolute top-2 right-2 bg-white/90 hover:bg-white text-gray-600 hover:text-red-500 rounded-full p-1.5 shadow-sm transition-all opacity-0 group-hover:opacity-100">
+                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                    </button>
+                                </div>
+                                
+                                <input type="file" id="taskImageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                                <button type="button" onclick="document.getElementById('taskImageInput').click()" 
+                                    class="flex items-center justify-center gap-2 w-full px-3 py-2.5 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:bg-gray-100 hover:border-gray-400 transition-all text-sm group"
+                                    id="uploadBtn">
+                                    <i class="fa-solid fa-paperclip group-hover:text-gray-700"></i>
+                                    <span class="group-hover:text-gray-700">Aggiungi immagine</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Priorità</label>
+                                <select id="taskPriority"
+                                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-all text-sm appearance-none cursor-pointer">
+                                    <option value="low">Bassa</option>
+                                    <option value="medium">Media</option>
+                                    <option value="high">Alta</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Data Scadenza</label>
+                                <input type="date" id="taskDueDate" required
+                                    class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-all text-sm text-gray-600">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comments Section (Visible only in Edit Mode) -->
+                    <div id="commentsSection" class="mt-8 pt-8 border-t border-gray-100 hidden">
+                        <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="fa-regular fa-comments text-gray-400"></i>
+                            Commenti
+                        </h4>
+                        
+                        <div id="commentsList" class="space-y-4 mb-4">
+                            <!-- Comments injected here -->
+                        </div>
+
+                        <div class="flex gap-2">
+                            <input type="text" id="newComment" 
+                                class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400"
+                                placeholder="Scrivi un commento..."
+                                onkeypress="if(event.key === 'Enter') { event.preventDefault(); addComment(); }">
+                            <button type="button" onclick="addComment()" 
+                                class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-6 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-between items-center">
+                <button type="button" onclick="deleteTask()" id="deleteBtn" class="text-red-500 text-sm font-medium hover:text-red-600 hidden px-2 py-1">
+                    Elimina
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                        Annulla
+                    </button>
+                    <button type="button" onclick="document.getElementById('taskForm').requestSubmit()" class="px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-medium rounded-lg shadow-sm transition-all">
+                        Salva Task
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div class="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 text-sm">
+            <i class="fa-solid fa-check-circle text-emerald-400"></i>
+            <span id="toastMessage">Operazione completata</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
